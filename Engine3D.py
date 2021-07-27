@@ -12,6 +12,51 @@ height = 540
 
 rend = Renderer(width, height)
 
+Pol1=[(165, 380), (185, 360), (180, 330), (207, 345), (233, 330), (230, 360), (250, 380), (220, 385), (205, 410), (193, 383)]
+Pol2=[(321, 335), (288, 286), (339, 251), (374, 302)]
+
+Pol3=[(377, 249), (411, 197), (436, 249)]
+
+Pol4=[(413, 177), (448, 159), (502, 88), (553, 53), (535, 36), (676, 37), (660, 52),
+(750, 145), (761, 179), (672, 192), (659, 214), (615, 214), (632, 230), (580, 230),
+(597, 215), (552, 214), (517, 144), (466, 180)]
+
+
+Pol5=[(682, 175), (708, 120), (735, 148), (739, 170)]
+
+for i in range(len(Pol1)):
+    rend.glLine(V2(Pol1[i][0], Pol1[i][1]), V2(Pol1[(i+1) % len(Pol1)][0], Pol1[(i+1) % len(Pol1)][1]))
+
+for i in range(len(Pol2)):
+    rend.glLine(V2(Pol2[i][0], Pol2[i][1]), V2(Pol2[(i+1) % len(Pol2)][0], Pol2[(i+1) % len(Pol2)][1]))
+
+# for i in range(len(Pol3)):
+#     rend.glLine(V2(Pol3[i][0], Pol3[i][1]), V2(Pol3[(i+1) % len(Pol3)][0], Pol3[(i+1) % len(Pol3)][1]))
+
+for i in range(len(Pol4)):
+    rend.glLine(V2(Pol4[i][0], Pol4[i][1]), V2(Pol4[(i+1) % len(Pol4)][0], Pol4[(i+1) % len(Pol4)][1]))
+
+for i in range(len(Pol5)):
+    rend.glLine(V2(Pol5[i][0], Pol5[i][1]), V2(Pol5[(i+1) % len(Pol5)][0], Pol5[(i+1) % len(Pol5)][1]))
+
+rend.glFillTriangleInv(V2(377, 249), V2(436, 249), V2(411, 197))
+
+
+
+
+# for x in range(Pol3[0][0], Pol3[1][0]):
+#     y = x - Pol3[0][0]
+#     x2 = Pol3[2][0] - y
+#     rend.glLine(V2(x,Pol3[0][1]), V2(x, Pol3[0][1] - y))
+
+
+#y = x - 570
+#     x2 = 750 - y
+
+#     rend.glLine(V2(x, 120),V2(x, 120 + y))
+#     rend.glLine(V2(x2, 120), V2(x2, 120 + y))
+
+
 # rend.glClearColor(0, 0, 0)
 # rend.glClear()
 
@@ -84,8 +129,8 @@ rend = Renderer(width, height)
 #     rend.glLine(V2(x, 120),V2(x, 120 + y))
 #     rend.glLine(V2(x2, 120), V2(x2, 120 + y))
 
-rend.glLoadModel('guitar.obj', V2(width/2, height/3), V2(100, 100))
+# rend.glLoadModel('guitar.obj', V2(width/2, height/3), V2(100, 100))
 
 
 
-rend.glFinish("modelo.bmp")
+rend.glFinish("Lab1.bmp")

@@ -139,6 +139,25 @@ class Renderer(object):
 
                 #self.glPoint(vert[0] * scale.x + transalate.x, vert[1] * scale.y + transalate.y)
 
+    def glFillTriangleInv(self, v1,v2,v3):
+        invslope1 = (v3.x - v1.x) / (v3.y - v1.y)
+        invslope2 = (v3.x - v2.x) / (v3.y - v2.y)
+        curx1 = v3.x
+        curx2 = v3.x 
+        print(v1.y)
+        print(v3.y)
+        print(invslope2)
+        
+
+        for i in range(v3.y, v1.y, 1):
+            
+            
+            
+            self.glLine(V2(int(curx1), i), V2(int(curx2), i))
+            curx1 = curx1 - invslope1
+            curx2 = curx2 - invslope2
+            
+
 
     def glFinish(self, filename):
         with open(filename, "wb") as file:
