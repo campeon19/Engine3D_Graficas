@@ -75,6 +75,7 @@ class Renderer(object):
 
 
     def glLine(self, v0, v1, color = None):
+        points = []
         x0 = v0.x
         x1 = v1.x
         y0 = v0.y
@@ -82,7 +83,7 @@ class Renderer(object):
 
         if x0 == x1 and y0 == y1:
             self.glPoint(x0,y1, color)
-            return
+            return points
 
         dx = abs(x1 - x0)
         dy = abs(y1 - y0)
@@ -139,25 +140,79 @@ class Renderer(object):
 
                 #self.glPoint(vert[0] * scale.x + transalate.x, vert[1] * scale.y + transalate.y)
 
-    def glFillTriangleInv(self, v1,v2,v3):
-        invslope1 = (v3.x - v1.x) / (v3.y - v1.y)
-        invslope2 = (v3.x - v2.x) / (v3.y - v2.y)
-        curx1 = v3.x
-        curx2 = v3.x 
-        print(v1.y)
-        print(v3.y)
-        print(invslope2)
-        
+    def glFillTriangle(self, A, B, C, color = None):
 
-        for i in range(v3.y, v1.y, 1):
-            
-            
-            
-            self.glLine(V2(int(curx1), i), V2(int(curx2), i))
-            curx1 = curx1 - invslope1
-            curx2 = curx2 - invslope2
-            
+        if A.y < B.y:
+            A, B = B, A
+        if A.y < C.y:
+            A, C = C, A
+        if B.y < C.y:
+            B, C = C, B
 
+        def flatBottomTriangle(v1, v2, v3):
+            try:
+                d_21 = (v2.x - v1.x) / (v2.y - v1.y)
+                d_31 = (v3.x - v1.x) / (v3.y - v1.y)
+            except:
+                pass
+            else:
+                x1 = v2.x
+                x2 = v3.x
+                for y in range(v2.y, v1.y + 1):
+                    self.glLine(V2(int(x1),y), V2(int(x2),y), color)
+                    x1 += d_21
+                    x2 += d_31
+
+        def flatTopTriangle(v1, v2, v3):
+            try:
+                d_31 = (v3.x - v1.x) / (v3.y - v1.y)
+                d_32 = (v3.x - v2.x) / (v3.y - v2.y)
+            except:
+                pass
+            else:
+                x1 = v3.x
+                x2 = v3.x
+
+                for y in range(v3.y, v1.y + 1):
+                    self.glLine(V2(int(x1),y), V2(int(x2),y), color)
+                    x1 += d_31
+                    x2 += d_32
+
+        if B.y == C.y:
+            flatBottomTriangle(A, B, C)
+        elif A.y == B.y:
+            flatTopTriangle(A, B, C)
+        else:
+            D = V2(A.x + ((B.y - A.y) / (C.y - A.y)) * (C.x - A.x)   , B.y)
+            flatBottomTriangle(A, B, D)
+            flatTopTriangle(B, D, C)
+            
+    def glDrawPolygon(self, polygon):
+        for i in range(len(polygon)):
+            self.glLine(V2(polygon[i][0], polygon[i][1]), V2(polygon[(i+1) % len(polygon)][0], polygon[(i+1) % len(polygon)][1]))
+
+    def glScanLine(self):
+        # Basandose en el algoritmo Scan Line, se implemento el siguiente codigo
+        for y in range (self.height):
+            puntos = []
+            puntosfiltrados = []
+            for x in range (self.width):
+                if self.pixels[x][y] == self.curr_color:
+                    puntos.append((x,y))
+            for l in range (0, len(puntos)):
+                if (puntos[(l+1) % len(puntos)][0] - puntos[l][0]) != 1:
+                    puntosfiltrados.append((puntos[l]))
+
+
+            if len(puntosfiltrados) == 0:
+                pass
+            elif len(puntosfiltrados) % 2 == 0:
+                for x in range(0, len(puntosfiltrados), 2):
+                    self.glLine(V2(puntosfiltrados[x][0], puntosfiltrados[x][1]),V2(puntosfiltrados[(x+1) % len(puntosfiltrados)][0], puntosfiltrados[(x+1) % len(puntosfiltrados)][1]))
+            elif len(puntosfiltrados) % 3 == 0:
+                for x in range(0, len(puntosfiltrados), 1):
+                    self.glLine(V2(puntosfiltrados[x][0], puntosfiltrados[x][1]),V2(puntosfiltrados[(x+1) % len(puntosfiltrados)][0], puntosfiltrados[(x+1) % len(puntosfiltrados)][1]))
+            #print(puntos)
 
     def glFinish(self, filename):
         with open(filename, "wb") as file:
