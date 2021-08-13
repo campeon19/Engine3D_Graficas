@@ -3,8 +3,12 @@
 import struct
 from collections import namedtuple
 from obj import Obj
+import numpy as np
+import matematica as mate
 
 V2 = namedtuple('Point2', ['x', 'y'])
+V3 = namedtuple('Point3', ['x', 'y', 'z'])
+
 
 
 def char(c):
@@ -16,12 +20,28 @@ def word(w):
 def dword(d):
     return struct.pack('=l', d)
 
-def color(r, g, b):
+def _color(r, g, b):
     return bytes([ int(b * 255), int(g* 255), int(r* 255)])
 
+def baryCoords(A, B, C, P):
+    # u es para A, v es para B, w es para C
+    try:
+        #PCB/ABC
+        u = (((B.y - C.y) * (P.x - C.x) + (C.x - B.x) * (P.y - C.y)) /
+            ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y)))
 
-BLACK = color(0,0,0)
-WHITE = color(1,1,1)
+        #PCA/ABC
+        v = (((C.y - A.y) * (P.x - C.x) + (A.x - C.x) * (P.y - C.y)) /
+            ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y)))
+
+        w = 1 - u - v
+    except:
+        return -1, -1, -1
+
+    return u, v, w
+
+BLACK = _color(0,0,0)
+WHITE = _color(1,1,1)
 
 
 class Renderer(object):
@@ -43,15 +63,17 @@ class Renderer(object):
         self.vpHeight = height
 
 
-
     def glClearColor(self, r, g, b):
-        self.clear_color = color(r, g, b)
+        self.clear_color = _color(r, g, b)
 
     def glClear(self):
         self.pixels = [[ self.clear_color for y in range(self.height)] for x in range(self.width)]
 
+        self.zbuffer = [[ -float('inf') for y in range(self.height)] for x in range(self.width)]
+
+
     def glColor(self, r, g, b):
-        self.curr_color = color(r,g,b)
+        self.curr_color = _color(r,g,b)
 
 
     def glPoint(self, x, y, color = None):
@@ -117,28 +139,53 @@ class Renderer(object):
                 y += 1 if y0 < y1 else -1
                 limit += 1
 
-    def glLoadModel(self, filename, transalate = V2(0.0,0.0), scale = V2(1,1)):
+    def glLoadModel(self, filename, texture = None, transalate = V3(0.0,0.0,0.0), scale = V3(1,1,1)):
 
         model = Obj(filename)
 
+        light = V3(0,0,1)
+        
         for cara in model.caras:
             vertCount = len(cara)
 
-            for v in range(vertCount):
-                index0 = cara[v][0] - 1
-                index1 = cara[(v+1) % vertCount][0] - 1
+            vert0 = model.vertices[cara[0][0] - 1]
+            vert1 = model.vertices[cara[1][0] - 1]
+            vert2 = model.vertices[cara[2][0] - 1]
 
-                vert0 = model.vertices[index0]
-                vert1 = model.vertices[index1]
+            vt0 = model.texturacoordenadas[cara[0][1] - 1]
+            vt1 = model.texturacoordenadas[cara[1][1] - 1]
+            vt2 = model.texturacoordenadas[cara[2][1] - 1]
 
-                x0 = round(vert0[0] * scale.x + transalate.x)
-                x1 = round(vert1[0] * scale.x + transalate.x)
-                y0 = round(vert0[1] * scale.y + transalate.y)
-                y1 = round(vert1[1] * scale.y + transalate.y)
+            a = self.glTransform(vert0, transalate, scale)
+            b = self.glTransform(vert1, transalate, scale)
+            c = self.glTransform(vert2, transalate, scale)
 
-                self.glLine(V2(x0,y0), V2(x1, y1))
+            
+            if vertCount == 4:
+                vert3 = model.vertices[cara[3][0] - 1]
+                vt3 = model.texturacoordenadas[cara[3][1] - 1]
+                d = self.glTransform(vert3, transalate, scale)
+            
+            # normal = np.cross(np.subtract(vert1,vert0), np.subtract(vert2,vert0))
+            # normal = normal / np.linalg.norm(normal)
+            # intensity = np.dot(normal, light)
 
-                #self.glPoint(vert[0] * scale.x + transalate.x, vert[1] * scale.y + transalate.y)
+            normal = mate.productoCruz3D(mate.restaVect(vert1,vert0), mate.restaVect(vert2,vert0))
+            normal = mate.normalizar3D(normal)
+            intensity = mate.productoPunto(normal, light)
+
+            if intensity > 1:
+                intensity = 1
+            elif intensity < 0:
+                intensity = 0
+            elif intensity != intensity:
+                intensity = 0
+
+
+            self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), texture=texture, intensity = intensity)
+            if vertCount == 4:
+                self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), texture=texture, intensity = intensity)
+
 
     def glFillTriangle(self, A, B, C, color = None):
 
@@ -186,7 +233,38 @@ class Renderer(object):
             D = V2(A.x + ((B.y - A.y) / (C.y - A.y)) * (C.x - A.x)   , B.y)
             flatBottomTriangle(A, B, D)
             flatTopTriangle(B, D, C)
-            
+
+    def glTriangle_bc(self, A, B, C, texCoords = (), texture = None, color = None, intensity = 1):
+        minX = round(min(A.x, B.x, C.x))
+        minY = round(min(A.y, B.y, C.y))
+        maxX = round(max(A.x, B.x, C.x))
+        maxY = round(max(A.y, B.y, C.y))
+
+        for x in range(minX, maxX + 1):
+            for y in range(minY, maxY + 1):
+                u,v,w = baryCoords(A,B,C, V2(x,y))
+
+                if u >= 0 and v >= 0 and w >= 0:
+
+                    z = A.z * u + B.z * v + C.z * w
+
+                    if texture:
+                        tA, tB, tC = texCoords
+                        tx = tA[0] * u + tB[0] * v + tC[0] * w
+                        ty = tA[1] * u + tB[1] * v + tC[1] * w
+                        color = texture.getColor(tx,ty)
+
+                    if z > self.zbuffer[x][y]:
+
+                        self.glPoint(x,y, _color( color[2] * intensity / 255,
+                                                  color[1] * intensity / 255,
+                                                  color[0] * intensity / 255) )
+                        self.zbuffer[x][y] = z
+
+
+    def glTransform(self, vertex, translate=V3(0,0,0), scale=V3(1,1,1)):
+        return V3(vertex[0] * scale.x + translate.x, vertex[1] * scale.y + translate.y, vertex[2] * scale.z + translate.z)
+    
     def glDrawPolygon(self, polygon):
         for i in range(len(polygon)):
             self.glLine(V2(polygon[i][0], polygon[i][1]), V2(polygon[(i+1) % len(polygon)][0], polygon[(i+1) % len(polygon)][1]))
