@@ -4,18 +4,15 @@
 from gl import Renderer, V2, V3
 from obj import Texture
 
-# width = 800
-# height = 600
-
 width = 940
 height = 540
 
-# width = 100
-# height = 100
-
 rend = Renderer(width, height)
 textura = Texture('Modelos/model.bmp')
+modelPosition = V3(0,0,-5)
 
-rend.glLoadModel('Modelos/model.obj', textura, V3(width/2, height/2, 0), V3(200,200,200))
+rend.glLookAt(modelPosition, V3(3,1,0))
 
-rend.glFinish("Resultados/Ejercicio4.bmp")
+rend.glLoadModel('Modelos/model.obj', textura, modelPosition, V3(2,2,2), V3(-15,0,0))
+
+rend.glFinish("Resultados/Ejercicio5.bmp")

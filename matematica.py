@@ -1,8 +1,7 @@
 # Christian Daniel Perez De Leon 19710
 # Libreria de matematica propia
 
-# Se utiliza la libreria math unicamente para utilizar la operacion de raiz cuadrada
-import math
+pi = 3.14159265359
 
 def restaVect(vec1, vec2):
     respuesta = []
@@ -25,10 +24,58 @@ def productoCruz3D(vec1, vec2):
     return res
 
 def normalizar3D(vector):  
-    magnitud = math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2])
+    magnitud = raizCuadrada(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2])
     respuesta = [vector[0] / magnitud,
                     vector[1] / magnitud,
                     vector[2] / magnitud]
     return respuesta
 
+def raizCuadrada(valor):
+    resultado = valor ** 0.5
+    return resultado
+
+def gradosARadianes(val):
+    resultado = val * pi / 180
+    return resultado
+
+def multMatrices3x3(matriz1, matriz2):
+    
+    resultado = [[0,0,0],
+                 [0,0,0],
+                 [0,0,0]]
+    
+    for i in range(len(matriz1)):    
+        for j in range(len(matriz2[0])):        
+            for k in range(len(matriz2)):
+                resultado[i][j] += matriz1[i][k] * matriz2[k][j]    
+    
+    return resultado
+
+def multMatrices4x4(matriz1, matriz2):
+    
+    resultado = [[0,0,0,0],
+                 [0,0,0,0],
+                 [0,0,0,0],
+                 [0,0,0,0]]
+    
+    for i in range(len(matriz1)):    
+        for j in range(len(matriz2[0])):        
+            for k in range(len(matriz2)):
+                resultado[i][j] += matriz1[i][k] * matriz2[k][j]    
+    
+    return resultado
+
+def multMatrices4xVec(matriz, vector):
+    resultado = []
+
+    for i in range(4):
+        res1 = 0
+        for j in range(4):
+            res1 += matriz[i][j] * vector[j]
+        resultado.append(res1)
+    return resultado
+
+
+def matrizInv(matriz):
+    pass
 

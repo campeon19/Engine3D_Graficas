@@ -4,10 +4,12 @@ import struct
 from collections import namedtuple
 from obj import Obj
 import numpy as np
+from numpy import sin, cos, tan
 import matematica as mate
 
 V2 = namedtuple('Point2', ['x', 'y'])
 V3 = namedtuple('Point3', ['x', 'y', 'z'])
+V4 = namedtuple('Point4', ['x', 'y', 'z', 'w'])
 
 
 
@@ -48,6 +50,7 @@ class Renderer(object):
     def __init__(self, width, height):
         self.curr_color = WHITE
         self.clear_color = BLACK
+        self.glViewMatrix()
         self.glCreateWindow(width, height)
 
     def glCreateWindow(self, width, height):
@@ -62,6 +65,11 @@ class Renderer(object):
         self.vpWidth = width
         self.vpHeight = height
 
+        self.viewportMatrix = np.matrix([[width/2, 0, 0, x + width/2],
+                                         [0, height/2, 0, y + height/2],
+                                         [0, 0, 0.5, 0.5],
+                                         [0, 0, 0, 1]])
+        self.glProjectionMatrix()
 
     def glClearColor(self, r, g, b):
         self.clear_color = _color(r, g, b)
@@ -69,12 +77,10 @@ class Renderer(object):
     def glClear(self):
         self.pixels = [[ self.clear_color for y in range(self.height)] for x in range(self.width)]
 
-        self.zbuffer = [[ -float('inf') for y in range(self.height)] for x in range(self.width)]
-
+        self.zbuffer = [[ float('inf') for y in range(self.height)] for x in range(self.width)]
 
     def glColor(self, r, g, b):
         self.curr_color = _color(r,g,b)
-
 
     def glPoint(self, x, y, color = None):
         if x < self.vpX or x >= self.vpX + self.vpWidth or y < self.vpY or y >= self.vpY + self.vpHeight:
@@ -94,7 +100,6 @@ class Renderer(object):
 
         if (0 < x < self.width) and (0 < y < self.height):
             self.pixels[int(x)][int(y)] = color or self.curr_color
-
 
     def glLine(self, v0, v1, color = None):
         points = []
@@ -139,9 +144,11 @@ class Renderer(object):
                 y += 1 if y0 < y1 else -1
                 limit += 1
 
-    def glLoadModel(self, filename, texture = None, transalate = V3(0.0,0.0,0.0), scale = V3(1,1,1)):
+    def glLoadModel(self, filename, texture = None, transalate = V3(0.0,0.0,0.0), scale = V3(1,1,1), rotation = V3(0,0,0)):
 
         model = Obj(filename)
+
+        modelMatrix = self.glCreateObjectMatrix(transalate, scale, rotation)
 
         light = V3(0,0,1)
         
@@ -156,21 +163,21 @@ class Renderer(object):
             vt1 = model.texturacoordenadas[cara[1][1] - 1]
             vt2 = model.texturacoordenadas[cara[2][1] - 1]
 
-            a = self.glTransform(vert0, transalate, scale)
-            b = self.glTransform(vert1, transalate, scale)
-            c = self.glTransform(vert2, transalate, scale)
+            a = self.glTransform(vert0, modelMatrix)
+            b = self.glTransform(vert1, modelMatrix)
+            c = self.glTransform(vert2, modelMatrix)
 
             
             if vertCount == 4:
                 vert3 = model.vertices[cara[3][0] - 1]
                 vt3 = model.texturacoordenadas[cara[3][1] - 1]
-                d = self.glTransform(vert3, transalate, scale)
+                d = self.glTransform(vert3, modelMatrix)
             
             # normal = np.cross(np.subtract(vert1,vert0), np.subtract(vert2,vert0))
             # normal = normal / np.linalg.norm(normal)
             # intensity = np.dot(normal, light)
 
-            normal = mate.productoCruz3D(mate.restaVect(vert1,vert0), mate.restaVect(vert2,vert0))
+            normal = mate.productoCruz3D(mate.restaVect(b,a), mate.restaVect(c,a))
             normal = mate.normalizar3D(normal)
             intensity = mate.productoPunto(normal, light)
 
@@ -181,11 +188,15 @@ class Renderer(object):
             elif intensity != intensity:
                 intensity = 0
 
+            a = self.glCamTransform(a)
+            b = self.glCamTransform(b)
+            c = self.glCamTransform(c)
+            if vertCount == 4:
+                d = self.glCamTransform(d)
 
             self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), texture=texture, intensity = intensity)
             if vertCount == 4:
                 self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), texture=texture, intensity = intensity)
-
 
     def glFillTriangle(self, A, B, C, color = None):
 
@@ -254,17 +265,160 @@ class Renderer(object):
                         ty = tA[1] * u + tB[1] * v + tC[1] * w
                         color = texture.getColor(tx,ty)
 
-                    if z > self.zbuffer[x][y]:
+                    if 0<=x<self.width and 0<=y<self.height:
 
-                        self.glPoint(x,y, _color( color[2] * intensity / 255,
-                                                  color[1] * intensity / 255,
-                                                  color[0] * intensity / 255) )
-                        self.zbuffer[x][y] = z
+                        if z < self.zbuffer[x][y] and z<=1 and z >= -1:
 
+                            self.glPoint(x,y, _color( color[2] * intensity / 255,
+                                                    color[1] * intensity / 255,
+                                                    color[0] * intensity / 255) )
+                            self.zbuffer[x][y] = z
 
-    def glTransform(self, vertex, translate=V3(0,0,0), scale=V3(1,1,1)):
-        return V3(vertex[0] * scale.x + translate.x, vertex[1] * scale.y + translate.y, vertex[2] * scale.z + translate.z)
+    def glTransform(self, vertex, vMatrix):
+        augVertex = V4(vertex[0], vertex[1], vertex[2], 1)
+        # transVertex = vMatrix @ augVertex
+        transVertex = mate.multMatrices4xVec(vMatrix, augVertex)
+        # transVertex = transVertex.tolist()[0]
+
+        transVertex = V3(transVertex[0] / transVertex[3],
+                         transVertex[1] / transVertex[3],
+                         transVertex[2] / transVertex[3])
+        
+        return transVertex
+
+    def glCamTransform( self, vertex ):
+        augVertex = V4(vertex[0], vertex[1], vertex[2], 1)
+        transVertex = self.viewportMatrix @ self.projectionMatrix @ self.viewMatrix @ augVertex
+        # res1 = mate.multMatrices4x4(self.viewportMatrix, self.projectionMatrix)
+        # res2 = mate.multMatrices4x4(res1, self.viewMatrix)
+        # transVertex = mate.multMatrices4xVec(res2, augVertex)
+        
+        transVertex = transVertex.tolist()[0]
+
+        transVertex = V3(transVertex[0] / transVertex[3],
+                         transVertex[1] / transVertex[3],
+                         transVertex[2] / transVertex[3])
+
+        return transVertex
     
+    def glCreateRotationMatrix(self, rotate=V3(0,0,0)):
+        # pitch = np.deg2rad(rotate.x)
+        # yaw = np.deg2rad(rotate.y)
+        # roll = np.deg2rad(rotate.z)
+
+        pitch = mate.gradosARadianes(rotate.x)
+        yaw = mate.gradosARadianes(rotate.y)
+        roll = mate.gradosARadianes(rotate.z)
+
+        # rotationX = np.matrix([[1,0,0,0],
+        #                        [0,cos(pitch),-sin(pitch),0],
+        #                        [0,sin(pitch),cos(pitch),0],
+        #                        [0,0,0,1]])
+
+        # rotationY = np.matrix([[cos(yaw),0,sin(yaw),0],
+        #                        [0,1,0,0],
+        #                        [-sin(yaw),0,cos(yaw),0],
+        #                        [0,0,0,1]])
+
+        # rotationZ = np.matrix([[cos(roll),-sin(roll),0,0],
+        #                        [sin(roll),cos(roll),0,0],
+        #                        [0,0,1,0],
+        #                        [0,0,0,1]])
+
+        # return rotationX * rotationY * rotationZ
+
+        rotationX = [[1,0,0,0],
+                     [0,cos(pitch),-sin(pitch),0],
+                     [0,sin(pitch),cos(pitch),0],
+                     [0,0,0,1]]
+
+        rotationY = [[cos(yaw),0,sin(yaw),0],
+                     [0,1,0,0],
+                     [-sin(yaw),0,cos(yaw),0],
+                     [0,0,0,1]]
+
+        rotationZ = [[cos(roll),-sin(roll),0,0],
+                     [sin(roll),cos(roll),0,0],
+                     [0,0,1,0],
+                     [0,0,0,1]]
+        res1 = mate.multMatrices4x4(rotationX, rotationY)
+        res2 = mate.multMatrices4x4(res1, rotationZ)
+
+        return res2
+
+    def glCreateObjectMatrix(self, translate = V3(0,0,0), scale=V3(1,1,1), rotate = V3(0,0,0)):
+        # translateMatrix = np.matrix([[1,0,0, translate.x],
+        #                              [0,1,0, translate.y],
+        #                              [0,0,1, translate.z],
+        #                              [0,0,0,1]])
+
+        # scaleMatrix = np.matrix([[scale.x,0,0,0],
+        #                          [0,scale.y,0,0],
+        #                          [0,0,scale.z,0],
+        #                          [0,0,0,1]])
+        
+        # rotationMatrix = self.glCreateRotationMatrix(rotate)
+
+        # return translateMatrix * rotationMatrix * scaleMatrix
+
+        translateMatrix=[[1,0,0, translate.x],
+                         [0,1,0, translate.y],
+                         [0,0,1, translate.z],
+                         [0,0,0,1]]
+
+        scaleMatrix=[[scale.x,0,0,0],
+                     [0,scale.y,0,0],
+                     [0,0,scale.z,0],
+                     [0,0,0,1]]
+        
+        rotationMatrix = self.glCreateRotationMatrix(rotate)
+
+        res1 = mate.multMatrices4x4(translateMatrix, rotationMatrix)
+        res2 = mate.multMatrices4x4(res1, scaleMatrix)
+
+        return res2
+
+    def glViewMatrix(self, translate = V3(0,0,0), rotate = V3(0,0,0)):
+        camMatrix = self.glCreateObjectMatrix(translate,V3(1,1,1),rotate)
+        self.viewMatrix = np.linalg.inv(camMatrix)
+
+    def glLookAt(self, eye, camPosition = V3(0,0,0)):
+        # forward = np.subtract(camPosition, eye)
+        # forward = forward / np.linalg.norm(forward)
+
+        # right = np.cross(V3(0,1,0), forward)
+        # right = right / np.linalg.norm(right)
+
+        # up = np.cross(forward, right)
+        # up = up / np.linalg.norm(up)
+
+        forward = mate.restaVect(camPosition, eye)
+        forward = mate.normalizar3D(forward)
+
+        right = mate.productoCruz3D(V3(0,1,0), forward)
+        right = mate.normalizar3D(right)
+
+        up = mate.productoCruz3D(forward, right)
+        up = mate.normalizar3D(up)
+
+        camMatrix = np.matrix([[right[0],up[0],forward[0],camPosition.x],
+                               [right[1],up[1],forward[1],camPosition.y],
+                               [right[2],up[2],forward[2],camPosition.z],
+                               [0,0,0,1]])
+
+        self.viewMatrix = np.linalg.inv(camMatrix)
+
+    def glProjectionMatrix(self, n = 0.1, f = 1000, fov = 60 ):
+        # aspectRatio = self.vpWidth / self.vpHeight
+
+        t = tan((fov * mate.pi / 180) / 2) * n
+        r = t * self.vpWidth / self.vpHeight
+
+        self.projectionMatrix = np.matrix([[n/r, 0, 0, 0],
+                                           [0, n/t, 0, 0],
+                                           [0, 0, -(f+n)/(f-n), -(2*f*n)/(f-n)],
+                                           [0, 0, -1, 0]])
+        
     def glDrawPolygon(self, polygon):
         for i in range(len(polygon)):
             self.glLine(V2(polygon[i][0], polygon[i][1]), V2(polygon[(i+1) % len(polygon)][0], polygon[(i+1) % len(polygon)][1]))
