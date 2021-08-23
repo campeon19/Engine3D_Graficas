@@ -29,14 +29,14 @@ class Obj(object):
                 elif prefix == 'f':
                     self.caras.append( [ list(map(int, vert.split('/'))) for vert in value.split(' ')] )
 
-
 class Texture(object):
     def __init__(self, filename):
         self.filename = filename
         self.read()
-    
+
+
     def read(self):
-        with open(self.filename, 'rb') as image:
+        with open(self.filename, "rb") as image:
             image.seek(10)
             headerSize = struct.unpack('=l', image.read(4))[0]
 
@@ -48,14 +48,14 @@ class Texture(object):
 
             self.pixels = []
 
-            for x in range(self.width):
+            for y in range(self.height):
                 self.pixels.append([])
-                for y in range(self.height):
+                for x in range(self.width):
                     b = ord(image.read(1)) / 255
                     g = ord(image.read(1)) / 255
                     r = ord(image.read(1)) / 255
 
-                    self.pixels[x].append(_color(r,g,b))
+                    self.pixels[y].append( _color(r,g,b) )
     
     
     def getColor(self, tx, ty):

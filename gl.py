@@ -153,6 +153,7 @@ class Renderer(object):
         model = Obj(filename)
 
         modelMatrix = self.glCreateObjectMatrix(transalate, scale, rotation)
+        rotationMatrix = self.glCreateRotationMatrix(rotation)
         
         for cara in model.caras:
             vertCount = len(cara)
@@ -164,6 +165,13 @@ class Renderer(object):
             vt0 = model.texturacoordenadas[cara[0][1] - 1]
             vt1 = model.texturacoordenadas[cara[1][1] - 1]
             vt2 = model.texturacoordenadas[cara[2][1] - 1]
+
+            vn0 = self.glDirTransform(model.normales[cara[0][2] - 1], rotationMatrix)
+            vn1 = self.glDirTransform(model.normales[cara[1][2] - 1], rotationMatrix)
+            vn2 = self.glDirTransform(model.normales[cara[2][2] - 1], rotationMatrix)
+
+            if vertCount == 4:
+                vn3 = self.glDirTransform(model.normales[cara[3][2] - 1], rotationMatrix)
 
             vert0 = self.glTransform(vert0, modelMatrix)
             vert1 = self.glTransform(vert1, modelMatrix)
@@ -181,9 +189,9 @@ class Renderer(object):
             if vertCount == 4:
                 d = self.glCamTransform(vert3)
 
-            self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), verts=(vert0, vert1, vert2) )
+            self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), normals = (vn0, vn1, vn2), verts=(vert0, vert1, vert2) )
             if vertCount == 4:
-                self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), verts=(vert0, vert2, vert3))
+                self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), normals = (vn0, vn2, vn3), verts=(vert0, vert2, vert3))
 
     def glFillTriangle(self, A, B, C, color = None):
 
@@ -232,7 +240,7 @@ class Renderer(object):
             flatBottomTriangle(A, B, D)
             flatTopTriangle(B, D, C)
 
-    def glTriangle_bc(self, A, B, C, texCoords = (), verts = (), color = None):
+    def glTriangle_bc(self, A, B, C, texCoords = (), normals = (), verts = (), color = None):
         minX = round(min(A.x, B.x, C.x))
         minY = round(min(A.y, B.y, C.y))
         maxX = round(max(A.x, B.x, C.x))
@@ -252,7 +260,7 @@ class Renderer(object):
 
                             if self.active_shader:
                                 
-                                r,g,b = self.active_shader(self, verts = verts , baryCoords = (u,v,w), texCoords = texCoords, color = color or self.curr_color)
+                                r,g,b = self.active_shader(self, verts = verts , baryCoords = (u,v,w), texCoords = texCoords, normals = normals, color = color or self.curr_color)
 
                             else:
                                 b,g,r = color or self.curr_color
@@ -274,6 +282,18 @@ class Renderer(object):
                          transVertex[1] / transVertex[3],
                          transVertex[2] / transVertex[3])
         
+        return transVertex
+
+    def glDirTransform(self, dirVector, vMatrix):
+        augVertex = V4(dirVector[0], dirVector[1], dirVector[2], 0)
+        # transVertex = vMatrix @ augVertex
+        # transVertex = transVertex.tolist()[0]
+        transVertex = mate.multMatrices4xVec(vMatrix, augVertex)
+
+        transVertex = V3(transVertex[0],
+                         transVertex[1],
+                         transVertex[2])
+
         return transVertex
 
     def glCamTransform( self, vertex ):
