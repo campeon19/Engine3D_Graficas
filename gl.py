@@ -53,6 +53,10 @@ class Renderer(object):
         self.glViewMatrix()
         self.glCreateWindow(width, height)
 
+        self.active_texture = None
+        self.active_shader = None
+        self.directional_light = V3(0,0,1)
+
     def glCreateWindow(self, width, height):
         self.width = width
         self.height = height
@@ -144,13 +148,11 @@ class Renderer(object):
                 y += 1 if y0 < y1 else -1
                 limit += 1
 
-    def glLoadModel(self, filename, texture = None, transalate = V3(0.0,0.0,0.0), scale = V3(1,1,1), rotation = V3(0,0,0)):
+    def glLoadModel(self, filename, transalate = V3(0.0,0.0,0.0), scale = V3(1,1,1), rotation = V3(0,0,0)):
 
         model = Obj(filename)
 
         modelMatrix = self.glCreateObjectMatrix(transalate, scale, rotation)
-
-        light = V3(0,0,1)
         
         for cara in model.caras:
             vertCount = len(cara)
@@ -163,40 +165,25 @@ class Renderer(object):
             vt1 = model.texturacoordenadas[cara[1][1] - 1]
             vt2 = model.texturacoordenadas[cara[2][1] - 1]
 
-            a = self.glTransform(vert0, modelMatrix)
-            b = self.glTransform(vert1, modelMatrix)
-            c = self.glTransform(vert2, modelMatrix)
+            vert0 = self.glTransform(vert0, modelMatrix)
+            vert1 = self.glTransform(vert1, modelMatrix)
+            vert2 = self.glTransform(vert2, modelMatrix)
 
             
             if vertCount == 4:
                 vert3 = model.vertices[cara[3][0] - 1]
                 vt3 = model.texturacoordenadas[cara[3][1] - 1]
-                d = self.glTransform(vert3, modelMatrix)
-            
-            # normal = np.cross(np.subtract(vert1,vert0), np.subtract(vert2,vert0))
-            # normal = normal / np.linalg.norm(normal)
-            # intensity = np.dot(normal, light)
+                vert3 = self.glTransform(vert3, modelMatrix)
 
-            normal = mate.productoCruz3D(mate.restaVect(b,a), mate.restaVect(c,a))
-            normal = mate.normalizar3D(normal)
-            intensity = mate.productoPunto(normal, light)
-
-            if intensity > 1:
-                intensity = 1
-            elif intensity < 0:
-                intensity = 0
-            elif intensity != intensity:
-                intensity = 0
-
-            a = self.glCamTransform(a)
-            b = self.glCamTransform(b)
-            c = self.glCamTransform(c)
+            a = self.glCamTransform(vert0)
+            b = self.glCamTransform(vert1)
+            c = self.glCamTransform(vert2)
             if vertCount == 4:
-                d = self.glCamTransform(d)
+                d = self.glCamTransform(vert3)
 
-            self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), texture=texture, intensity = intensity)
+            self.glTriangle_bc(a,b,c, texCoords=(vt0,vt1,vt2), verts=(vert0, vert1, vert2) )
             if vertCount == 4:
-                self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), texture=texture, intensity = intensity)
+                self.glTriangle_bc(a,c,d,texCoords=(vt0,vt2,vt3), verts=(vert0, vert2, vert3))
 
     def glFillTriangle(self, A, B, C, color = None):
 
@@ -245,7 +232,7 @@ class Renderer(object):
             flatBottomTriangle(A, B, D)
             flatTopTriangle(B, D, C)
 
-    def glTriangle_bc(self, A, B, C, texCoords = (), texture = None, color = None, intensity = 1):
+    def glTriangle_bc(self, A, B, C, texCoords = (), verts = (), color = None):
         minX = round(min(A.x, B.x, C.x))
         minY = round(min(A.y, B.y, C.y))
         maxX = round(max(A.x, B.x, C.x))
@@ -259,19 +246,22 @@ class Renderer(object):
 
                     z = A.z * u + B.z * v + C.z * w
 
-                    if texture:
-                        tA, tB, tC = texCoords
-                        tx = tA[0] * u + tB[0] * v + tC[0] * w
-                        ty = tA[1] * u + tB[1] * v + tC[1] * w
-                        color = texture.getColor(tx,ty)
-
                     if 0<=x<self.width and 0<=y<self.height:
 
                         if z < self.zbuffer[x][y] and z<=1 and z >= -1:
 
-                            self.glPoint(x,y, _color( color[2] * intensity / 255,
-                                                    color[1] * intensity / 255,
-                                                    color[0] * intensity / 255) )
+                            if self.active_shader:
+                                
+                                r,g,b = self.active_shader(self, verts = verts , baryCoords = (u,v,w), texCoords = texCoords, color = color or self.curr_color)
+
+                            else:
+                                b,g,r = color or self.curr_color
+                                b/=255
+                                g/=255
+                                r/=255
+
+
+                            self.glPoint(x,y, _color(r, g, b))
                             self.zbuffer[x][y] = z
 
     def glTransform(self, vertex, vMatrix):
