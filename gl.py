@@ -54,6 +54,7 @@ class Renderer(object):
         self.glCreateWindow(width, height)
 
         self.active_texture = None
+        self.normal_map = None
         self.active_shader = None
         self.directional_light = V3(0,0,1)
 
