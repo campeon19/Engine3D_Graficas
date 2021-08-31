@@ -55,8 +55,12 @@ class Renderer(object):
 
         self.active_texture = None
         self.normal_map = None
+
+        self.background = None
+
         self.active_shader = None
         self.directional_light = V3(0,0,1)
+        
 
     def glCreateWindow(self, width, height):
         self.width = width
@@ -83,6 +87,23 @@ class Renderer(object):
         self.pixels = [[ self.clear_color for y in range(self.height)] for x in range(self.width)]
 
         self.zbuffer = [[ float('inf') for y in range(self.height)] for x in range(self.width)]
+
+    def glClearBackground(self):
+
+        if self.background:
+            for x in range(self.vpX, self.vpX + self.vpWidth):
+                for y in range(self.vpY, self.vpY + self.vpHeight):
+                    
+                    tx = (x - self.vpX) / self.vpWidth
+                    ty = (y - self.vpY) / self.vpHeight
+
+                    self.glPoint(x, y, self.background.getColor(tx, ty))
+                
+            
+    def glViewportClear(self, color = None):
+        for x in range(self.vpX, self.vpX + self.vpWidth):
+            for y in range(self.vpY, self.vpY + self.vpHeight):
+                self.glPoint(x, y, color)
 
     def glColor(self, r, g, b):
         self.curr_color = _color(r,g,b)
@@ -390,8 +411,8 @@ class Renderer(object):
         return res2
 
     def glViewMatrix(self, translate = V3(0,0,0), rotate = V3(0,0,0)):
-        camMatrix = self.glCreateObjectMatrix(translate,V3(1,1,1),rotate)
-        self.viewMatrix = np.linalg.inv(camMatrix)
+        self.camMatrix = self.glCreateObjectMatrix(translate,V3(1,1,1),rotate)
+        self.viewMatrix = np.linalg.inv(self.camMatrix)
 
     def glLookAt(self, eye, camPosition = V3(0,0,0)):
         # forward = np.subtract(camPosition, eye)

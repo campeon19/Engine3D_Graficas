@@ -76,6 +76,21 @@ def multMatrices4xVec(matriz, vector):
     return resultado
 
 
+# def det3x3(matriz):
+#     newMatrix = [[],
+#                  [],
+#                  []]
+
 def matrizInv(matriz):
     pass
+
+def valAbsoluto(valor):
+    if valor < 0:
+        valor *= -1
+        return valor
+    else:
+        return valor
+
+
+    
 
