@@ -18,6 +18,7 @@ class Obj(object):
     def read(self):
         for line in self.lines:
             if line:
+                
                 prefix, value = line.split(' ', 1)
 
                 if prefix == 'v':

@@ -1,6 +1,8 @@
 # Christian Daniel Perez De Leon 19710
 # Libreria de matematica propia
 
+import sys
+
 pi = 3.14159265359
 
 def restaVect(vec1, vec2):
@@ -76,13 +78,46 @@ def multMatrices4xVec(matriz, vector):
     return resultado
 
 
-# def det3x3(matriz):
-#     newMatrix = [[],
-#                  [],
-#                  []]
-
 def matrizInv(matriz):
-    pass
+    n = len(matriz)
+    m = matriz
+    
+    # matriz aumentada con la matriz identidad
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                m[i].append(1)
+            else:
+                m[i].append(0)
+
+    # Gauss Jordan Elimination
+    for i in range(n):
+        if m[i][i] == 0.0:
+            sys.exit('Division por cero')
+        
+        for j in range(n):
+            if i != j:
+                ratio = m[j][i]/m[i][i]
+
+                for k in range(2*n):
+                    m[j][k] = m[j][k] - ratio * m[i][k]
+
+    # Operacion en las filas para convertir la diagonal principal en 1
+    for i in range(n):
+        divisor = m[i][i]
+        for j in range(2*n):
+            m[i][j] = m[i][j]/divisor
+
+    # Guardar matriz
+
+    resultado = [[] for _ in range(n)]
+    for i in range(n):
+        for j in range(n, 2*n):
+            resultado[i].append(m[i][j])
+
+    
+    return resultado
+
 
 def valAbsoluto(valor):
     if valor < 0:
@@ -92,5 +127,5 @@ def valAbsoluto(valor):
         return valor
 
 
-    
+
 
