@@ -70,9 +70,9 @@ def multMatrices4x4(matriz1, matriz2):
 def multMatrices4xVec(matriz, vector):
     resultado = []
 
-    for i in range(4):
+    for i in range(len(matriz)):
         res1 = 0
-        for j in range(4):
+        for j in range(len(matriz[0])):
             res1 += matriz[i][j] * vector[j]
         resultado.append(res1)
     return resultado
@@ -125,6 +125,22 @@ def valAbsoluto(valor):
         return valor
     else:
         return valor
+
+def scalarxMatrix(scalar, matrix):
+    m = matrix
+    for x in range(len(m)):
+        for y in range(len(m[0])):
+            m[x][y] = m[x][y] * scalar
+    
+    return m
+
+def scalarxVector(scalar, vector):
+    m = vector
+    for x in range(len(m)):       
+        m[x] = m[x] * scalar
+    
+    return m
+
 
 
 

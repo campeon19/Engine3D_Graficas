@@ -97,6 +97,9 @@ def phong(render, **kwargs):
                 render.directional_light[2]]
     intensity = mate.productoPunto(normal, dirLight)
 
+    if intensity > 1:
+        intensity = 1
+
     b*= intensity
     g*= intensity
     r*= intensity
@@ -276,9 +279,9 @@ def normalMap(render, **kwargs):
         texNormal = tangentMatrix @ texNormal
         texNormal = texNormal.tolist()[0]
         texNormal = texNormal / np.linalg.norm(texNormal)
-        intensity = np.dot(texNormal, -dirLight)
+        intensity = np.dot(texNormal, dirLight)
     else:
-        intensity = np.dot(normal, -dirLight)
+        intensity = np.dot(normal, dirLight)
 
     b*= intensity
     g*= intensity
@@ -500,7 +503,7 @@ def glow(render, **kwargs):
                   render.camMatrix[2][2]]
 
     glowAmount = 1 - mate.productoPunto(normal, camForward)
-    glowColor = [1,1,1]
+    glowColor = [1,1,0]
 
     r += glowColor[0] * glowAmount
     g += glowColor[1] * glowAmount
@@ -613,4 +616,161 @@ def shader4(render, **kwargs):
         return r, g, b
     else:
         return 0,0,0
+
+def koopa(render, **kwargs):
+    
+    u, v, w = kwargs['baryCoords']
+    tA, tB, tC = kwargs['texCoords']
+    b, g, r = kwargs['color']
+    nA, nB, nC = kwargs['normals']
+
+    b/= 255
+    g/= 255
+    r/= 255
+
+    if render.active_texture:
+        tx = tA[0] * u + tB[0] * v + tC[0] * w
+        ty = tA[1] * u + tB[1] * v + tC[1] * w
+        texColor = render.active_texture.getColor(tx, ty)
+        b *= texColor[0] / 255
+        g *= texColor[1] / 255
+        r *= texColor[2] / 255
+
+    nX = nA[0] * u + nB[0] * v + nC[0] * w
+    nY = nA[1] * u + nB[1] * v + nC[1] * w
+    nZ = nA[2] * u + nB[2] * v + nC[2] * w
+
+    normal = (nX, nY, nZ)
+
+    dirLight = [render.directional_light[0],
+                render.directional_light[1],
+                render.directional_light[2]]
+    intensity = mate.productoPunto(normal, dirLight)
+
+    if intensity > 1:
+        intensity = 1
+
+    if intensity > 0.95:
+        r*= 183/255
+        g*= 129/255
+        b*= 6/255
+    elif intensity > 0.94:
+        r*= 180/255
+        g*= 125/255
+        b*= 6/255
+    elif intensity > 0.93:
+        r*= 175/255
+        g*= 120/255
+        b*= 6/255
+    elif intensity > 0.92:
+        r*= 173/255
+        g*= 118/255
+        b*= 6/255
+    elif intensity > 0.91:
+        r*= 170/255
+        g*= 115/255
+        b*= 6/255
+    elif intensity > 0.9:
+        r*= 165/255
+        g*= 110/255
+        b*= 6/255
+    elif intensity > 0.85:
+        r*= 160/255
+        g*= 105/255
+        b*= 6/255
+    elif intensity > 0.8:
+        r*= 155/255
+        g*= 100/255
+        b*= 6/255
+    elif intensity > 0.65:
+        r*= 155/255
+        g*= 10/255
+        b*= 6/255
+    elif intensity > 0.5:
+        r*= 20/255
+        g*= 140/255
+        b*= 255/255
+    elif intensity > 0.4:
+        r*= 15/255
+        g*= 100/255
+        b*= 255/255
+    elif intensity > 0.3:
+        r*= 10/255
+        g*= 80/255
+        b*= 255/255
+    elif intensity > 0.25:
+        r*= 9/255
+        g*= 70/255
+        b*= 255/255
+    elif intensity > 0.2:
+        r*= 8/255
+        g*= 60/255
+        b*= 255/255
+    else:
+        r*= 0/255
+        g*= 91/255
+        b*= 11/255
+
+    # r = 0.7176
+    # g = 0.5059
+    # b = 0.03
+
+    b*= intensity
+    g*= intensity
+    r*= intensity
+
+    if intensity > 0:
+        return r, g, b
+    else:
+        return 0,0,0
+
+def transparencia(render, **kwargs):
+    
+    u, v, w = kwargs['baryCoords']
+    tA, tB, tC = kwargs['texCoords']
+    b, g, r = kwargs['color']
+    nA, nB, nC = kwargs['normals']
+    maxY, minY, y = kwargs['heightY']
+
+    b/= 255
+    g/= 255
+    r/= 255
+
+    if render.active_texture:
+        tx = tA[0] * u + tB[0] * v + tC[0] * w
+        ty = tA[1] * u + tB[1] * v + tC[1] * w
+        texColor = render.active_texture.getColor(tx, ty)
+        b *= texColor[0] / 255
+        g *= texColor[1] / 255
+        r *= texColor[2] / 255
+
+    nX = nA[0] * u + nB[0] * v + nC[0] * w
+    nY = nA[1] * u + nB[1] * v + nC[1] * w
+    nZ = nA[2] * u + nB[2] * v + nC[2] * w
+
+    normal = (nX, nY, nZ)
+
+    dirLight = [render.directional_light[0],
+                render.directional_light[1],
+                render.directional_light[2]]
+    intensity = mate.productoPunto(normal, dirLight)
+
+    if intensity > 1:
+        intensity = 1
+
+    for x in range(minY, maxY, 2):
+        if y % 2 != 0:
+                b = 0
+                g = 0
+                r = 0
+
+    b*= intensity
+    g*= intensity
+    r*= intensity
+
+    if intensity > 0:
+        return r, g, b
+    else:
+        return 0,0,0
+
 

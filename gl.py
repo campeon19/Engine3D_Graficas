@@ -3,15 +3,12 @@
 import struct
 from collections import namedtuple
 from obj import Obj
-import numpy as np
 from numpy import sin, cos, tan
 import matematica as mate
 
 V2 = namedtuple('Point2', ['x', 'y'])
 V3 = namedtuple('Point3', ['x', 'y', 'z'])
 V4 = namedtuple('Point4', ['x', 'y', 'z', 'w'])
-
-
 
 def char(c):
     return struct.pack('=c', c.encode('ascii'))
@@ -23,7 +20,7 @@ def dword(d):
     return struct.pack('=l', d)
 
 def _color(r, g, b):
-    return bytes([ int(b * 255), int(g* 255), int(r* 255)])
+    return bytes([ int(b * 255), int(g * 255), int(r * 255)])
 
 def baryCoords(A, B, C, P):
     # u es para A, v es para B, w es para C
@@ -280,7 +277,7 @@ class Renderer(object):
 
                             if self.active_shader:
                                 
-                                r,g,b = self.active_shader(self, verts = verts , baryCoords = (u,v,w), texCoords = texCoords, normals = normals, color = color or self.curr_color)
+                                r,g,b = self.active_shader(self, verts = verts , baryCoords = (u,v,w), texCoords = texCoords, normals = normals, color = color or self.curr_color, heightY = (maxY, minY, y))
 
                             else:
                                 b,g,r = color or self.curr_color
